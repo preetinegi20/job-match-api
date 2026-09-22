@@ -79,4 +79,37 @@ function scoreSalary(expectedSalary, salaryMin, salaryMax) {
 
   return { score: Math.round(score), max: MAX_POINTS };
 }
-module.exports = { scoreSkills, scoreExperience, normalizeSkill, scoreLocation, scoreSalary };
+function scoreJob(candidate, job) {
+  const skills = scoreSkills(candidate.skills, job.requiredSkills);
+
+  if (skills.disqualified) {
+    return {
+      disqualified: true,
+      overallScore: 0,
+      breakdown: {
+        skills: { score: 0, max: 50 },
+        experience: { score: 0, max: 20 },
+        location: { score: 0, max: 15 },
+        salary: { score: 0, max: 15 },
+      },
+    };
+  }
+
+  const experience = scoreExperience(candidate.yearsExperience, job.minYearsExperience);
+  const location = scoreLocation(candidate.location, job.location, job.remoteAllowed);
+  const salary = scoreSalary(candidate.expectedSalary, job.salaryMin, job.salaryMax);
+
+  const overallScore = skills.score + experience.score + location.score + salary.score;
+
+  return {
+    disqualified: false,
+    overallScore,
+    breakdown: {
+      skills: { score: skills.score, max: skills.max },
+      experience: { score: experience.score, max: experience.max },
+      location: { score: location.score, max: location.max },
+      salary: { score: salary.score, max: salary.max },
+    },
+  };
+}
+module.exports = { scoreSkills, scoreExperience, normalizeSkill, scoreLocation, scoreSalary, scoreJob };

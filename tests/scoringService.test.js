@@ -1,4 +1,4 @@
-const { scoreSkills, scoreExperience, scoreLocation, scoreSalary  } = require('../src/services/scoringService');
+const { scoreSkills, scoreExperience, scoreLocation, scoreSalary, scoreJob } = require('../src/services/scoringService');
 
 describe('scoreSkills', () => {
   test('disqualifies candidate missing a must-have skill', () => {
@@ -113,5 +113,43 @@ describe('scoreSalary', () => {
   test('scores near zero when expectation sits right at the max', () => {
     const result = scoreSalary(1500000, 1000000, 1500000);
     expect(result.score).toBe(0);
+  });
+});
+
+describe('scoreJob', () => {
+  const goodCandidate = {
+    skills: ['Node.js', 'PostgreSQL', 'Docker'],
+    yearsExperience: 4,
+    location: 'Bangalore',
+    expectedSalary: 1300000,
+  };
+
+  const job = {
+    requiredSkills: [
+      { name: 'Node.js', mustHave: true },
+      { name: 'PostgreSQL', mustHave: true },
+      { name: 'Docker', mustHave: false },
+    ],
+    minYearsExperience: 3,
+    location: 'Bangalore',
+    remoteAllowed: false,
+    salaryMin: 1200000,
+    salaryMax: 1600000,
+  };
+
+  test('scores a strong match highly across all dimensions', () => {
+    const result = scoreJob(goodCandidate, job);
+    expect(result.disqualified).toBe(false);
+    expect(result.overallScore).toBeGreaterThan(85);
+    expect(result.breakdown.skills.score).toBe(50);
+    expect(result.breakdown.experience.score).toBe(20);
+    expect(result.breakdown.location.score).toBe(15);
+  });
+
+  test('disqualifies when candidate lacks a must-have skill, regardless of other strengths', () => {
+    const weakCandidate = { ...goodCandidate, skills: ['Python'] };
+    const result = scoreJob(weakCandidate, job);
+    expect(result.disqualified).toBe(true);
+    expect(result.overallScore).toBe(0);
   });
 });
