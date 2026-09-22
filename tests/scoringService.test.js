@@ -1,4 +1,4 @@
-const { scoreSkills } = require('../src/services/scoringService');
+const { scoreSkills, scoreExperience  } = require('../src/services/scoringService');
 
 describe('scoreSkills', () => {
   test('disqualifies candidate missing a must-have skill', () => {
@@ -40,5 +40,29 @@ describe('scoreSkills', () => {
       [{ name: 'JavaScript', mustHave: true }]
     );
     expect(result.disqualified).toBe(false);
+  });
+});
+
+
+describe('scoreExperience', () => {
+  test('gives full score when candidate meets minimum experience', () => {
+    const result = scoreExperience(5, 3);
+    expect(result.score).toBe(20);
+  });
+
+  test('gives full score when candidate exactly meets minimum', () => {
+    const result = scoreExperience(3, 3);
+    expect(result.score).toBe(20);
+  });
+
+  test('penalizes but does not zero out a candidate slightly under minimum', () => {
+    const result = scoreExperience(3, 5); // 2 years short
+    expect(result.score).toBe(12); // 20 - (2*4)
+    expect(result.score).toBeGreaterThan(0);
+  });
+
+  test('never goes below zero even when very under-qualified', () => {
+    const result = scoreExperience(0, 10); // 10 years short, would be negative
+    expect(result.score).toBe(0);
   });
 });

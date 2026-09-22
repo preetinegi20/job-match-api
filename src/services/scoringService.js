@@ -29,4 +29,18 @@ function scoreSkills(candidateSkills, jobSkills) {
   return { score: Math.round(score), max: 50, disqualified: false };
 }
 
-module.exports = { scoreSkills, normalizeSkill };
+
+function scoreExperience(candidateYears, minYearsRequired) {
+  const MAX_POINTS = 20;
+  const PENALTY_PER_YEAR_SHORT = 4;
+
+  if (candidateYears >= minYearsRequired) {
+    return { score: MAX_POINTS, max: MAX_POINTS };
+  }
+
+  const yearsShort = minYearsRequired - candidateYears;
+  const score = Math.max(0, MAX_POINTS - yearsShort * PENALTY_PER_YEAR_SHORT);
+
+  return { score: Math.round(score), max: MAX_POINTS };
+}
+module.exports = { scoreSkills, scoreExperience, normalizeSkill };
