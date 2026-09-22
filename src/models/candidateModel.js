@@ -9,5 +9,9 @@ async function createCandidate({ name, skills, yearsExperience, location, expect
   );
   return result.rows[0];
 }
+async function getCandidateById(id) {
+  const result = await pool.query('SELECT * FROM candidates WHERE id = $1', [id]);
+  return result.rows[0];
+}
 
-module.exports = { createCandidate };
+module.exports = { createCandidate, getCandidateById };

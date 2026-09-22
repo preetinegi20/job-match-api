@@ -29,5 +29,18 @@ async function createJob({ title, minYearsExperience, location, salaryMin, salar
     client.release();
   }
 }
+async function getAllJobsWithSkills() {
+  const jobsResult = await pool.query('SELECT * FROM jobs');
+  const jobs = jobsResult.rows;
 
-module.exports = { createJob };
+  const skillsResult = await pool.query('SELECT * FROM job_skills');
+  const allSkills = skillsResult.rows;
+
+  return jobs.map(job => ({
+    ...job,
+    requiredSkills: allSkills
+      .filter(s => s.job_id === job.id)
+      .map(s => ({ name: s.skill, mustHave: s.is_must_have })),
+  }));
+}
+module.exports = { createJob, getAllJobsWithSkills };
