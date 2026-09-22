@@ -1,12 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { createJobHandler } = require('../controllers/jobController');
+const { getJobRecommendationsHandler } = require('../controllers/recommendationController');
 
 router.post('/', createJobHandler);
-
-// GET /jobs/:id/recommendations - bonus reverse view (best-fit candidates)
-router.get('/:id/recommendations', (req, res) => {
-  res.status(501).json({ message: 'not implemented yet' });
-});
+router.get('/:id/recommendations', getJobRecommendationsHandler);
 
 module.exports = router;

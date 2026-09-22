@@ -43,4 +43,16 @@ async function getAllJobsWithSkills() {
       .map(s => ({ name: s.skill, mustHave: s.is_must_have })),
   }));
 }
-module.exports = { createJob, getAllJobsWithSkills };
+
+async function getJobById(id) {
+  const jobResult = await pool.query('SELECT * FROM jobs WHERE id = $1', [id]);
+  const job = jobResult.rows[0];
+  if (!job) return null;
+
+  const skillsResult = await pool.query('SELECT * FROM job_skills WHERE job_id = $1', [id]);
+  return {
+    ...job,
+    requiredSkills: skillsResult.rows.map(s => ({ name: s.skill, mustHave: s.is_must_have })),
+  };
+}
+module.exports = { createJob, getAllJobsWithSkills, getJobById };

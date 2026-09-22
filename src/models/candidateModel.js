@@ -13,5 +13,8 @@ async function getCandidateById(id) {
   const result = await pool.query('SELECT * FROM candidates WHERE id = $1', [id]);
   return result.rows[0];
 }
-
-module.exports = { createCandidate, getCandidateById };
+async function getAllCandidates() {
+  const result = await pool.query('SELECT * FROM candidates');
+  return result.rows;
+}
+module.exports = { createCandidate, getCandidateById, getAllCandidates };
