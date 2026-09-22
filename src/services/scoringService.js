@@ -45,19 +45,31 @@ function scoreExperience(candidateYears, minYearsRequired, weights = DEFAULT_WEI
   return { score: Math.round(score), max: weights.max };
 }
 
-function scoreLocation(candidateLocation, jobLocation, remoteAllowed, weights = DEFAULT_WEIGHTS.location) {
+function scoreLocation( candidateLocation, jobLocation, remoteAllowed, weights = DEFAULT_WEIGHTS.location) {
   const normalize = (loc) => loc.trim().toLowerCase();
 
   if (normalize(candidateLocation) === normalize(jobLocation)) {
-    return { score: weights.max, max: weights.max };
+    return {
+      score: weights.max,
+      max: weights.max,
+    };
   }
 
   if (remoteAllowed) {
-    return { score: weights.remotePoints, max: weights.max };
+    const remotePoints = weights.remotePoints;
+
+    return {
+      score: Math.round(remotePoints),
+      max: weights.max,
+    };
   }
 
-  return { score: 0, max: weights.max };
+  return {
+    score: 0,
+    max: weights.max,
+  };
 }
+
 
 function scoreSalary(expectedSalary, salaryMin, salaryMax, weights = DEFAULT_WEIGHTS.salary) {
   if (salaryMax < expectedSalary) {

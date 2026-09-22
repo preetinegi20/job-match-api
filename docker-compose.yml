@@ -1,0 +1,45 @@
+services:
+
+  db:
+    image: postgres:16
+    restart: always
+
+    environment:
+      POSTGRES_USER: jobmatch
+      POSTGRES_PASSWORD: jobmatch
+      POSTGRES_DB: jobmatchdb
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./src/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jobmatch -d jobmatchdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    restart: always
+
+    ports:
+      - "3000:3000"
+
+    environment:
+      PORT: 3000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: jobmatch
+      DB_PASSWORD: jobmatch
+      DB_NAME: jobmatchdb
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
