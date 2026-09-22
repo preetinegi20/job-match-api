@@ -60,4 +60,23 @@ function scoreLocation(candidateLocation, jobLocation, remoteAllowed) {
 
   return { score: 0, max: MAX_POINTS };
 }
-module.exports = { scoreSkills, scoreExperience, normalizeSkill, scoreLocation };
+function scoreSalary(expectedSalary, salaryMin, salaryMax) {
+  const MAX_POINTS = 15;
+
+  // Job's max can't even meet expectation -> near zero
+  if (salaryMax < expectedSalary) {
+    return { score: 0, max: MAX_POINTS };
+  }
+
+  // Job's min already comfortably meets/exceeds expectation -> full score
+  if (salaryMin >= expectedSalary) {
+    return { score: MAX_POINTS, max: MAX_POINTS };
+  }
+
+  // Expected salary falls inside the range somewhere -> interpolate
+  // Closer to jobMax (i.e. expectation is on the lower end of the range) = higher score
+  const score = MAX_POINTS * (salaryMax - expectedSalary) / (salaryMax - salaryMin);
+
+  return { score: Math.round(score), max: MAX_POINTS };
+}
+module.exports = { scoreSkills, scoreExperience, normalizeSkill, scoreLocation, scoreSalary };

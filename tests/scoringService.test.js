@@ -1,4 +1,4 @@
-const { scoreSkills, scoreExperience, scoreLocation  } = require('../src/services/scoringService');
+const { scoreSkills, scoreExperience, scoreLocation, scoreSalary  } = require('../src/services/scoringService');
 
 describe('scoreSkills', () => {
   test('disqualifies candidate missing a must-have skill', () => {
@@ -85,6 +85,33 @@ describe('scoreLocation', () => {
 
   test('gives zero when location differs and remote not allowed', () => {
     const result = scoreLocation('Hyderabad', 'Bangalore', false);
+    expect(result.score).toBe(0);
+  });
+});
+
+describe('scoreSalary', () => {
+  test('gives zero when job max is below candidate expectation', () => {
+    const result = scoreSalary(1500000, 1000000, 1300000);
+    expect(result.score).toBe(0);
+  });
+
+  test('gives full score when job min already meets or exceeds expectation', () => {
+    const result = scoreSalary(1000000, 1200000, 1500000);
+    expect(result.score).toBe(15);
+  });
+
+  test('gives full score when job min exactly equals expectation', () => {
+    const result = scoreSalary(1200000, 1200000, 1500000);
+    expect(result.score).toBe(15);
+  });
+
+  test('interpolates when expectation falls inside the range', () => {
+    const result = scoreSalary(1200000, 1000000, 1500000);
+    expect(result.score).toBe(9); // 15 * (300000/500000)
+  });
+
+  test('scores near zero when expectation sits right at the max', () => {
+    const result = scoreSalary(1500000, 1000000, 1500000);
     expect(result.score).toBe(0);
   });
 });
