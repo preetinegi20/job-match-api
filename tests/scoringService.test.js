@@ -1,4 +1,4 @@
-const { scoreSkills, scoreExperience  } = require('../src/services/scoringService');
+const { scoreSkills, scoreExperience, scoreLocation  } = require('../src/services/scoringService');
 
 describe('scoreSkills', () => {
   test('disqualifies candidate missing a must-have skill', () => {
@@ -63,6 +63,28 @@ describe('scoreExperience', () => {
 
   test('never goes below zero even when very under-qualified', () => {
     const result = scoreExperience(0, 10); // 10 years short, would be negative
+    expect(result.score).toBe(0);
+  });
+});
+
+describe('scoreLocation', () => {
+  test('gives full score on exact location match', () => {
+    const result = scoreLocation('Bangalore', 'Bangalore', false);
+    expect(result.score).toBe(15);
+  });
+
+  test('is case and whitespace insensitive', () => {
+    const result = scoreLocation(' bangalore ', 'Bangalore', false);
+    expect(result.score).toBe(15);
+  });
+
+  test('gives partial credit when remote allowed but location differs', () => {
+    const result = scoreLocation('Hyderabad', 'Bangalore', true);
+    expect(result.score).toBe(9);
+  });
+
+  test('gives zero when location differs and remote not allowed', () => {
+    const result = scoreLocation('Hyderabad', 'Bangalore', false);
     expect(result.score).toBe(0);
   });
 });

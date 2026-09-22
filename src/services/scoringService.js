@@ -43,4 +43,21 @@ function scoreExperience(candidateYears, minYearsRequired) {
 
   return { score: Math.round(score), max: MAX_POINTS };
 }
-module.exports = { scoreSkills, scoreExperience, normalizeSkill };
+
+function scoreLocation(candidateLocation, jobLocation, remoteAllowed) {
+  const MAX_POINTS = 15;
+  const REMOTE_POINTS = 9;
+
+  const normalize = (loc) => loc.trim().toLowerCase();
+
+  if (normalize(candidateLocation) === normalize(jobLocation)) {
+    return { score: MAX_POINTS, max: MAX_POINTS };
+  }
+
+  if (remoteAllowed) {
+    return { score: REMOTE_POINTS, max: MAX_POINTS };
+  }
+
+  return { score: 0, max: MAX_POINTS };
+}
+module.exports = { scoreSkills, scoreExperience, normalizeSkill, scoreLocation };
