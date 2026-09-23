@@ -59,7 +59,7 @@ PORT=3000
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
-DB_PASSWORD=your_postgres_password
+DB_PASSWORD=postgres_password
 DB_NAME=jobmatchdb
 ```
 
