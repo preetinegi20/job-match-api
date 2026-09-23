@@ -80,6 +80,10 @@ function scoreSalary(expectedSalary, salaryMin, salaryMax, weights = DEFAULT_WEI
     return { score: weights.max, max: weights.max };
   }
 
+  if (salaryMax === salaryMin) {
+    return { score: weights.max, max: weights.max };
+  }
+
   const score = weights.max * (salaryMax - expectedSalary) / (salaryMax - salaryMin);
 
   return { score: Math.round(score), max: weights.max };

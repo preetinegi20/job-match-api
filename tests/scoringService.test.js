@@ -122,6 +122,11 @@ describe("scoreSalary", () => {
     const result = scoreSalary(1500000, 1000000, 1500000);
     expect(result.score).toBe(0);
   });
+  test('gives full score for a fixed-rate job without dividing by zero', () => {
+  const result = scoreSalary(1000000, 1500000, 1500000); // salaryMin === salaryMax
+  expect(result.score).toBe(15);
+  expect(Number.isNaN(result.score)).toBe(false);
+});
 });
 
 describe("scoreJob", () => {
