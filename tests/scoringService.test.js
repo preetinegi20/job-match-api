@@ -50,6 +50,27 @@ describe("scoreSkills", () => {
     );
     expect(result.disqualified).toBe(false);
   });
+
+  test("handles a job with no must-have skills", () => {
+  const result = scoreSkills(
+    ["React.js"],
+    [
+      { name: "React.js", mustHave: false },
+      { name: "Node.js", mustHave: false },
+    ]
+  );
+
+  expect(result.disqualified).toBe(false);
+  expect(result.score).toBeGreaterThan(0);
+  });
+  test("ignores leading and trailing whitespace in skills", () => {
+  const result = scoreSkills(
+    ["  JavaScript  "],
+    [{ name: "javascript", mustHave: true }]
+  );
+
+  expect(result.disqualified).toBe(false);
+});
 });
 
 describe("scoreExperience", () => {
@@ -126,7 +147,8 @@ describe("scoreSalary", () => {
   const result = scoreSalary(1000000, 1500000, 1500000); // salaryMin === salaryMax
   expect(result.score).toBe(15);
   expect(Number.isNaN(result.score)).toBe(false);
-});
+  });
+    
 });
 
 describe("scoreJob", () => {
@@ -165,4 +187,36 @@ describe("scoreJob", () => {
     expect(result.disqualified).toBe(true);
     expect(result.overallScore).toBe(0);
   });
+  test("uses custom weights when provided", () => {
+  const customWeights = {
+    skills: {
+      max: 40,
+      baseForMustHaves: 30,
+    },
+    experience: {
+      max: 30,
+      penaltyPerYearShort: 5,
+    },
+    location: {
+      max: 20,
+      remotePoints: 10,
+    },
+    salary: {
+      max: 10,
+    },
+  };
+
+  const result = scoreJob(
+    goodCandidate,
+    job,
+    customWeights
+  );
+
+  expect(result.disqualified).toBe(false);
+
+  expect(result.breakdown.skills.max).toBe(40);
+  expect(result.breakdown.experience.max).toBe(30);
+  expect(result.breakdown.location.max).toBe(20);
+  expect(result.breakdown.salary.max).toBe(10);
+});
 });

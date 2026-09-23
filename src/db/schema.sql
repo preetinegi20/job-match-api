@@ -25,3 +25,6 @@ CREATE TABLE IF NOT EXISTS job_skills (
   skill TEXT NOT NULL,
   is_must_have BOOLEAN NOT NULL DEFAULT TRUE
 );
+
+CREATE INDEX IF NOT EXISTS idx_job_skills_job_id
+ON job_skills(job_id);

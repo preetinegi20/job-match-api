@@ -1,43 +1,80 @@
-const { getCandidateById, getAllCandidates } = require('../models/candidateModel');
-const { getAllJobsWithSkills, getJobById } = require('../models/jobModel');
-const { scoreJob } = require('../services/scoringService');
+const {
+  getCandidateById,
+  getAllCandidates,
+} = require("../models/candidateModel");
+
+const {
+  getAllJobsWithSkills,
+  getJobById,
+} = require("../models/jobModel");
+
+const { scoreJob } = require("../services/scoringService");
+
+const MAX_RECOMMENDATIONS_LIMIT = 100;
+const DEFAULT_RECOMMENDATIONS_LIMIT = 10;
+
+function parseRecommendationLimit(value) {
+  const requestedLimit = Number.parseInt(value, 10);
+
+  if (Number.isNaN(requestedLimit)) {
+    return DEFAULT_RECOMMENDATIONS_LIMIT;
+  }
+
+  return Math.min(
+    Math.max(requestedLimit, 1),
+    MAX_RECOMMENDATIONS_LIMIT
+  );
+}
 
 function toCandidateForScoring(candidate) {
   return {
     skills: candidate.skills,
-    yearsExperience: Number(candidate.years_experience),
+    yearsExperience: Number(candidate.yearsExperience),
     location: candidate.location,
-    expectedSalary: Number(candidate.expected_salary),
+    expectedSalary: Number(candidate.expectedSalary),
   };
 }
 
 function toJobForScoring(job) {
   return {
     requiredSkills: job.requiredSkills,
-    minYearsExperience: Number(job.min_years_experience),
+    minYearsExperience: Number(job.minYearsExperience),
     location: job.location,
-    remoteAllowed: job.remote_allowed,
-    salaryMin: Number(job.salary_min),
-    salaryMax: Number(job.salary_max),
+    remoteAllowed: job.remoteAllowed,
+    salaryMin: Number(job.salaryMin),
+    salaryMax: Number(job.salaryMax),
   };
 }
 
-// GET /candidates/:id/recommendations - jobs ranked for a candidate
+// GET /candidates/:id/recommendations
+// Jobs ranked for a candidate
 async function getRecommendationsHandler(req, res) {
   try {
     const candidateId = req.params.id;
-    const limit = parseInt(req.query.limit) || 10;
+    const limit = parseRecommendationLimit(req.query.limit);
 
     const candidate = await getCandidateById(candidateId);
+
     if (!candidate) {
-      return res.status(404).json({ error: 'Candidate not found' });
+      return res.status(404).json({
+        code: "CANDIDATE_NOT_FOUND",
+        message: "Candidate not found",
+        details: [],
+      });
     }
 
     const candidateForScoring = toCandidateForScoring(candidate);
+
     const jobs = await getAllJobsWithSkills();
 
     const scored = jobs
-      .map(job => ({ job, result: scoreJob(candidateForScoring, toJobForScoring(job)) }))
+      .map((job) => ({
+        job,
+        result: scoreJob(
+          candidateForScoring,
+          toJobForScoring(job)
+        ),
+      }))
       .filter(({ result }) => !result.disqualified)
       .sort((a, b) => b.result.overallScore - a.result.overallScore)
       .slice(0, limit)
@@ -48,29 +85,45 @@ async function getRecommendationsHandler(req, res) {
         breakdown: result.breakdown,
       }));
 
-    res.json(scored);
+    return res.json(scored);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Something went wrong generating recommendations' });
+    return res.status(500).json({
+      code: "RECOMMENDATION_GENERATION_FAILED",
+      message: "Something went wrong generating recommendations",
+      details: [],
+    });
   }
 }
 
-// GET /jobs/:id/recommendations - candidates ranked for a job (bonus reverse view)
+// GET /jobs/:id/recommendations
+// Candidates ranked for a job
 async function getJobRecommendationsHandler(req, res) {
   try {
     const jobId = req.params.id;
-    const limit = parseInt(req.query.limit) || 10;
+    const limit = parseRecommendationLimit(req.query.limit);
 
     const job = await getJobById(jobId);
+
     if (!job) {
-      return res.status(404).json({ error: 'Job not found' });
+      return res.status(404).json({
+        code: "JOB_NOT_FOUND",
+        message: "Job not found",
+        details: [],
+      });
     }
 
     const jobForScoring = toJobForScoring(job);
+
     const candidates = await getAllCandidates();
 
     const scored = candidates
-      .map(candidate => ({ candidate, result: scoreJob(toCandidateForScoring(candidate), jobForScoring) }))
+      .map((candidate) => ({
+        candidate,
+        result: scoreJob(
+          toCandidateForScoring(candidate),
+          jobForScoring
+        ),
+      }))
       .filter(({ result }) => !result.disqualified)
       .sort((a, b) => b.result.overallScore - a.result.overallScore)
       .slice(0, limit)
@@ -81,11 +134,17 @@ async function getJobRecommendationsHandler(req, res) {
         breakdown: result.breakdown,
       }));
 
-    res.json(scored);
+    return res.json(scored);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Something went wrong generating candidate recommendations' });
+    return res.status(500).json({
+      code: "RECOMMENDATION_GENERATION_FAILED",
+      message: "Something went wrong generating candidate recommendations",
+      details: [],
+    });
   }
 }
 
-module.exports = { getRecommendationsHandler, getJobRecommendationsHandler };
+module.exports = {
+  getRecommendationsHandler,
+  getJobRecommendationsHandler,
+};
