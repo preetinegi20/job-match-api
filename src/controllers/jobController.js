@@ -20,7 +20,11 @@ async function createJobHandler(req, res) {
       salaryMax === undefined ||
       !Array.isArray(requiredSkills)
     ) {
-      return res.status(400).json({ error: "Missing required fields" });
+      return res.status(400).json({
+        code: "INVALID_JOB_INPUT",
+        message: "Missing required fields",
+        details: [],
+      });
     }
 
     const job = await createJob({
@@ -36,7 +40,11 @@ async function createJobHandler(req, res) {
     res.status(201).json(job);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Something went wrong creating the job" });
+    res.status(500).json({
+      code: "JOB_CREATION_FAILED",
+      message: "Something went wrong creating the job",
+      details: [],
+    });
   }
 }
 
