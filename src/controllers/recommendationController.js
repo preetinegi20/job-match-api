@@ -26,6 +26,15 @@ function parseRecommendationLimit(value) {
   );
 }
 
+function parseWeightsFromQuery(query) {
+  if (!query.weights) return {};
+  try {
+    return JSON.parse(query.weights);
+  } catch {
+    return {};
+  }
+}
+
 function toCandidateForScoring(candidate) {
   return {
     skills: candidate.skills,
@@ -52,6 +61,7 @@ async function getRecommendationsHandler(req, res) {
   try {
     const candidateId = req.params.id;
     const limit = parseRecommendationLimit(req.query.limit);
+    const customWeights = parseWeightsFromQuery(req.query);
 
     const candidate = await getCandidateById(candidateId);
 
@@ -72,7 +82,8 @@ async function getRecommendationsHandler(req, res) {
         job,
         result: scoreJob(
           candidateForScoring,
-          toJobForScoring(job)
+          toJobForScoring(job),
+          customWeights
         ),
       }))
       .filter(({ result }) => !result.disqualified)
@@ -87,6 +98,7 @@ async function getRecommendationsHandler(req, res) {
 
     return res.json(scored);
   } catch (err) {
+    console.error(err);
     return res.status(500).json({
       code: "RECOMMENDATION_GENERATION_FAILED",
       message: "Something went wrong generating recommendations",
@@ -101,6 +113,7 @@ async function getJobRecommendationsHandler(req, res) {
   try {
     const jobId = req.params.id;
     const limit = parseRecommendationLimit(req.query.limit);
+    const customWeights = parseWeightsFromQuery(req.query);
 
     const job = await getJobById(jobId);
 
@@ -121,7 +134,8 @@ async function getJobRecommendationsHandler(req, res) {
         candidate,
         result: scoreJob(
           toCandidateForScoring(candidate),
-          jobForScoring
+          jobForScoring,
+          customWeights
         ),
       }))
       .filter(({ result }) => !result.disqualified)
@@ -136,6 +150,7 @@ async function getJobRecommendationsHandler(req, res) {
 
     return res.json(scored);
   } catch (err) {
+    console.error(err);
     return res.status(500).json({
       code: "RECOMMENDATION_GENERATION_FAILED",
       message: "Something went wrong generating candidate recommendations",
