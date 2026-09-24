@@ -13,11 +13,12 @@ The recommendation engine uses a deterministic scoring system rather than machin
 - Hard-filter jobs when a must-have skill is missing
 - Rank matches using a 0–100 scoring system
 - Provide a score breakdown for each matching dimension
-- Support recommendation limits (`?limit=`)
+- Support recommendation limits (`?limit=`, server-side clamped to a max of 100)
 - Configurable scoring weights via query param
-- PostgreSQL persistence
+- Structured, consistent error responses (`{ code, message, details }`)
+- PostgreSQL persistence, with jobs+skills joined via a single SQL `LEFT JOIN`
 - Docker and Docker Compose support
-- Automated tests with Jest
+- Automated tests with Jest (23 tests covering the scoring engine)
 - GitHub Actions CI for Docker build validation
 
 ## Tech Stack
@@ -59,7 +60,7 @@ PORT=3000
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
-DB_PASSWORD=postgres_password
+DB_PASSWORD=your_postgres_password
 DB_NAME=jobmatchdb
 ```
 
@@ -86,7 +87,7 @@ curl http://localhost:3000/health/db
 npm test
 ```
 
-This runs the Jest test suite, primarily covering the scoring engine (`tests/scoringService.test.js`) — 19 tests across skill matching, experience penalties, location tiers, salary interpolation, and combined scoring scenarios.
+This runs the Jest test suite, covering the scoring engine (`tests/scoringService.test.js`) — 23 tests across skill matching (including must-have disqualification, nice-to-have credit, whitespace/case handling), experience penalties, location tiers, salary interpolation (including a fixed-rate salary edge case that previously caused a division-by-zero), configurable weight overrides, and combined scoring scenarios.
 
 ---
 
@@ -100,7 +101,7 @@ docker compose up --build
 
 This builds the API image, starts Postgres, and runs the app connected to it — no local `.env` or native Postgres install needed, since environment variables are set directly in `docker-compose.yml` for this setup.
 
-**Note on Docker testing:** local development happened primarily on a machine without reliable Docker support. Rather than skip this bonus, the Docker build and startup are verified automatically via **GitHub Actions** on every push — see `.github/workflows/docker-build.yml`, which builds the image, brings up both containers via `docker compose`, and confirms the API responds on `/health` before tearing down. See the Actions tab on the repo for current build status.
+**Note on Docker testing:** local development happened primarily on a machine without reliable Docker support. Rather than skip this bonus, the Docker build and startup are verified automatically via GitHub Actions on every push — see `.github/workflows/docker-build.yml`, which builds the image, brings up both containers via `docker compose`, and confirms the API responds on `/health` before tearing down. This workflow is currently passing on every commit — see the Actions tab on the repo for current status.
 
 ---
 
@@ -119,6 +120,8 @@ Create a candidate profile.
   "expectedSalary": 3000000
 }
 ```
+
+`skills` is validated as a non-empty array — a string or missing value returns a `400`.
 
 ### `POST /jobs`
 Create a job posting.
@@ -144,8 +147,8 @@ Create a job posting.
 Ranked list of jobs for a candidate.
 
 **Query params:**
-- `limit` (optional, default 10) — max number of results
-- `weights` (optional, JSON string) — override default scoring weights, e.g. `?weights={"location":{"max":30}}`
+- `limit` (optional, default 10, max 100) — number of results, clamped server-side regardless of the requested value
+- `weights` (optional, JSON string) — override default scoring weights, e.g. `?weights={"salary":{"max":30}}`
 
 **Response:**
 ```json
@@ -165,7 +168,18 @@ Ranked list of jobs for a candidate.
 ```
 
 ### `GET /jobs/:id/recommendations?limit=10&weights={}` (bonus)
-Reverse view — ranked list of candidates for a job. Same query params and response shape as above, with `candidateId`/`name` instead of `jobId`/`title`.
+Reverse view — ranked list of candidates for a job. Same query params and response shape, with `candidateId`/`name` instead of `jobId`/`title`.
+
+### Error responses
+
+All error responses use a consistent structured shape:
+```json
+{
+  "code": "CANDIDATE_NOT_FOUND",
+  "message": "Candidate not found",
+  "details": []
+}
+```
 
 ---
 
@@ -203,6 +217,7 @@ Three tiers: exact match = 15, no match but `remoteAllowed = true` = 9, neither 
 - Job's maximum below candidate's expectation → 0 (can't meet expectation).
 - Job's minimum already meets/exceeds expectation → 15 (comfortably affordable).
 - Otherwise, interpolate: `15 × (jobMax − expectedSalary) / (jobMax − jobMin)` — the closer the expectation sits to the low end of the range, the higher the score.
+- **Edge case:** if `salaryMin === salaryMax` (a fixed-rate posting) and the rate is above the candidate's expectation, the job scores the full 15 rather than dividing by zero. This was caught during a self-review pass and covered with a dedicated test.
 
 **Worked example:** A candidate expecting ₹12,00,000 against a job paying ₹10,00,000–₹15,00,000 scores `15 × (1,500,000 − 1,200,000) / (1,500,000 − 1,000,000) = 9`.
 
@@ -223,17 +238,16 @@ This example also surfaced a real limitation: location matching is exact-string,
 
 ### Configurable weights (bonus)
 
-Every scoring function accepts an optional weights argument, defaulting to the values above. Callers can override any subset via the `weights` query param (JSON), e.g. `?weights={"skills":{"max":60}}` — only the specified fields are overridden, everything else falls back to defaults.
+Every scoring function accepts an optional weights argument, defaulting to the values above. Callers can override any subset via the `weights` query param (JSON), e.g. `?weights={"skills":{"max":60}}` — only the specified fields are overridden, everything else falls back to defaults. Invalid or malformed JSON in the `weights` param is silently ignored, falling back to defaults, rather than causing a request failure.
 
 ---
 
 ## Assumptions & What I'd Do Differently With More Time
 
-- **Skill matching is exact (after normalization).** "JavaScript" and "javascript" are treated as the same skill, but "JS" and "JavaScript" are not. With more time, I'd add a synonym/alias list or fuzzy matching.
+- **Skill matching is exact (after normalization).** "JavaScript" and "javascript" are treated as the same skill, but "JS" and "JavaScript" are not, and "React" vs "React.js" are treated as different skills. With more time, I'd add a synonym/alias list or fuzzy matching.
 - **Location matching is exact-string, not fuzzy or geographic.** A typo or alternate spelling (e.g. "Bangalore" vs "Bengaluru") is treated as a full mismatch. I'd add normalization or a geocoding-based distance check with more time.
-- **`getAllJobsWithSkills` joins jobs and skills in application code**, not via a SQL JOIN. This is fine at small scale but wouldn't perform well with a large dataset — I'd rewrite this as a proper SQL join.
-- **No pagination beyond `limit`.** I'd add offset/cursor-based pagination for large result sets.
-- **Input validation is manual** (checking required fields directly in controllers). I'd use a schema validation library (e.g. Zod or Joi) for more robust, declarative validation.
+- **No pagination beyond `limit`.** I'd add offset/cursor-based pagination for large result sets, on top of the existing server-side max clamp.
+- **Input validation is manual** (checking required fields directly in controllers, including array-type checks for `skills`/`requiredSkills`). I'd use a schema validation library (e.g. Zod or Joi) for more robust, declarative validation with more time.
 - **No authentication**, per the assignment's explicit scope.
 - **Docker was not fully verified locally** due to hardware constraints on the primary dev machine — verified instead via GitHub Actions CI on every push.
 
@@ -245,10 +259,13 @@ The assignment explicitly calls for a transparent, explainable scorer rather tha
 
 ## AI Tool Usage
 
-- Debugging environment/tooling issues (Postgres installation across multiple machines, git configuration, `.gitignore`/`node_modules` tracking issues)
-- Designing the GitHub Actions workflow to build the Docker image and validate the container starts correctly, since my local machine couldn't reliably run Docker Desktop
+I used Claude (Anthropic) throughout this project for:
+- Scaffolding the initial project structure and folder layout
+- Working through the scoring formula's weighting logic and reasoning
+- Designing the GitHub Actions workflow to build the Docker image and validate the container starts correctly, since my local machine couldn't reliably run Docker Desktop 
+- The same review flagged missing input validation (a non-array `skills` field would previously reach the database and throw an unhandled error instead of a clean `400`), which I fixed by validating with `Array.isArray()` and a non-empty check.
 
-All logic — the scoring functions, database schema, controllers, and tests — was written, reviewed, and tested by me. Specific example of overriding/catching an issue: I caught that the job location 'Banglore' was a typo after seeing the location score come back as 9/15 instead of 15/15, which led me to document the exact-match limitation rather than silently accept it.
+All logic — the scoring functions, database schema, controllers, and tests — was written, reviewed, and tested by me. One specific place I caught and corrected an issue myself: after refactoring the database queries to alias columns to camelCase directly in SQL, I found the recommendation controller's helper functions were still mapping to the old snake_case property names, silently producing `NaN` scores. I diagnosed this by inspecting the raw database rows and tracing the property names through each layer, rather than accepting the first suggested fix.
 
 ---
 
@@ -259,12 +276,12 @@ job-match-api/
 ├── .github/workflows/     # CI: Docker build validation
 ├── src/
 │   ├── controllers/       # Request handling, validation, response shaping
-│   ├── models/             # Database queries
+│   ├── models/             # Database queries (SQL joins, camelCase aliasing)
 │   ├── routes/              # Route definitions
 │   ├── services/            # Scoring engine (core business logic)
 │   ├── db/                  # DB connection pool + schema
 │   └── index.js             # App entry point
-├── tests/                 # Jest tests (scoring logic)
+├── tests/                 # Jest tests (scoring logic — 23 tests)
 ├── Dockerfile
 ├── docker-compose.yml
 └── README.md
