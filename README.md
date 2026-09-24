@@ -246,8 +246,13 @@ Every scoring function accepts an optional weights argument, defaulting to the v
 
 - **Skill matching is exact (after normalization).** "JavaScript" and "javascript" are treated as the same skill, but "JS" and "JavaScript" are not, and "React" vs "React.js" are treated as different skills. With more time, I'd add a synonym/alias list or fuzzy matching.
 - **Location matching is exact-string, not fuzzy or geographic.** A typo or alternate spelling (e.g. "Bangalore" vs "Bengaluru") is treated as a full mismatch. I'd add normalization or a geocoding-based distance check with more time.
+<<<<<<< HEAD
 - **No pagination beyond `limit`.** I'd add offset/cursor-based pagination for large result sets, on top of the existing server-side max clamp.
 - **Input validation is manual** (checking required fields directly in controllers, including array-type checks for `skills`/`requiredSkills`). I'd use a schema validation library (e.g. Zod or Joi) for more robust, declarative validation with more time.
+=======
+- **No pagination beyond `limit`.** I'd add offset/cursor-based pagination for large result sets.
+- **Input validation is manual** (checking required fields directly in controllers). I'd use a schema validation library (e.g. Zod or Joi) for more robust, declarative validation.
+>>>>>>> 83dc7415f3792464be4bee5a68b9f44518a25ecd
 - **No authentication**, per the assignment's explicit scope.
 - **Docker was not fully verified locally** due to hardware constraints on the primary dev machine — verified instead via GitHub Actions CI on every push.
 
