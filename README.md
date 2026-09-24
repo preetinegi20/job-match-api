@@ -231,7 +231,6 @@ Every scoring function accepts an optional weights argument, defaulting to the v
 
 - **Skill matching is exact (after normalization).** "JavaScript" and "javascript" are treated as the same skill, but "JS" and "JavaScript" are not. With more time, I'd add a synonym/alias list or fuzzy matching.
 - **Location matching is exact-string, not fuzzy or geographic.** A typo or alternate spelling (e.g. "Bangalore" vs "Bengaluru") is treated as a full mismatch. I'd add normalization or a geocoding-based distance check with more time.
-- **`getAllJobsWithSkills` joins jobs and skills in application code**, not via a SQL JOIN. This is fine at small scale but wouldn't perform well with a large dataset — I'd rewrite this as a proper SQL join.
 - **No pagination beyond `limit`.** I'd add offset/cursor-based pagination for large result sets.
 - **Input validation is manual** (checking required fields directly in controllers). I'd use a schema validation library (e.g. Zod or Joi) for more robust, declarative validation.
 - **No authentication**, per the assignment's explicit scope.
